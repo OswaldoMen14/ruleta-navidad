@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ruleta Navideña de Lewis 🎄</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: #000 url("fondo.jpg") center/cover fixed no-repeat;
+    }
+
+    /* Capa oscura encima del fondo para resaltar la tarjeta */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: -1;
+    }
+
+    /* Canvas de nieve */
+    #snowCanvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .card {
+      position: relative;
+      z-index: 2;
+      background: rgba(20, 20, 20, 0.92);
+      padding: 1.8rem 1.8rem 2.2rem;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+      max-width: 420px;
+      width: 90%;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    h1 {
+      margin-top: 0;
+      margin-bottom: 0.25rem;
+      font-size: 1.6rem;
+    }
+
+    .subtitle {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      opacity: 0.85;
+    }
+
+    #wheel-container {
+      position: relative;
+      width: 320px;
+      height: 320px;
+      margin: 0 auto 1.5rem;
+    }
+
+    #wheel {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 6px solid #ffffff;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .segment-label {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #ffffff;
+      text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
+      pointer-events: none;
+      max-width: 90px;
+      text-align: center;
+    }
+
+    /* Bolita que se mueve por la ruleta */
+    #pointer {
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #ffeb3b;
+      border: 3px solid #ffffff;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
+      transform: translate(-50%, -50%);
+      transition: left 0.2s ease-out, top 0.2s ease-out;
+    }
+
+    /* Centro de la ruleta */
+    .center-dot {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid #ff5252;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Puntero fijo arriba (triángulo) */
+    .fixed-arrow {
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 16px solid transparent;
+      border-right: 16px solid transparent;
+      border-bottom: 26px solid #ffeb3b;
+      filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.7));
+    }
+
+    #status {
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+    }
+
+    .buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button {
+      cursor: pointer;
+      border-radius: 999px;
+      padding: 0.6rem 1.6rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border: none;
+      outline: none;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.2s ease;
+    }
+
+    #spinBtn {
+      background: linear-gradient(135deg, #ff5252, #ffb74d);
+      color: #fff;
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5);
+    }
+
+    #spinBtn:active {
+      transform: translateY(1px);
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6);
+    }
+
+    #spotifyBtn {
+      background: #1db954;
+      color: #fff;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    #spotifyBtn span {
+      font-size: 1rem;
+    }
+
+    #spinBtn:disabled {
+      opacity: 0.6;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .names-list {
+      margin-top: 0.8rem;
+      font-size: 0.85rem;
+      opacity: 0.85;
+    }
+
+    .names-list span {
+      font-weight: 600;
+    }
+
+    /* Imagen final (PNG animado) */
+    #finalImage {
+      display: none;            /* oculta al inicio */
+      max-width: 100%;
+      border-radius: 16px;
+      margin: 0 auto 1.2rem;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+    }
+
+    @media (max-width: 480px) {
+      #wheel-container {
+        width: 260px;
+        height: 260px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="snowCanvas"></canvas>
+
+  <div class="card">
+    <h1>Ruleta Navideña 🎄</h1>
+    <p class="subtitle">Para decidir el orden para abrir regalo 🎁</p>
+
+    <div id="wheel-container">
+      <div id="wheel">
+        <div class="fixed-arrow"></div>
+        <div class="center-dot"></div>
+        <div id="pointer"></div>
+      </div>
+    </div>
+
+    <!-- Imagen final que se mostrará cuando todos hayan pasado -->
+    <img id="finalImage" src="final.png" alt="Familia navideña" />
+
+    <p id="status">Haz clic en <b>"Girar ruleta"</b> para elegir a la persona que abre su regalo.</p>
+
+    <div class="buttons">
+      <button id="spinBtn">Girar ruleta</button>
+      <button id="spotifyBtn">
+        <span>🎶</span> Navidad en familia con Lewis
+      </button>
+    </div>
+
+    <div class="names-list" id="namesList"></div>
+  </div>
+
+  <script>
+    // ================== CONFIGURACIÓN ==================
+
+    // Nombres de las personas
+    const initialNames = ["Paposo", "Mamita", "Telenita", "Kachis"];
+
+    // URL de tu playlist de Spotify
+    const spotifyUrl = "https://open.spotify.com/playlist/49djLRJ0pPMQLSidNmkKPI?si=276d2a00ce0841df&pt=ec8bc9c0f9c7dd81a60f13416603edbc";
+
+    // ===================================================
+
+    const wheelContainer = document.getElementById("wheel-container");
+    const wheel = document.getElementById("wheel");
+    let pointer = document.getElementById("pointer");
+    const statusText = document.getElementById("status");
+    const spinBtn = document.getElementById("spinBtn");
+    const spotifyBtn = document.getElementById("spotifyBtn");
+    const namesList = document.getElementById("namesList");
+    const finalImage = document.getElementById("finalImage");
+
+    // Esta lista se irá reduciendo conforme salgan personas
+    let remaining = [...initialNames];
+
+    // Función para redibujar la ruleta según los participantes restantes
+    function renderWheel() {
+      const N = remaining.length;
+
+      // Si ya no queda nadie: ocultar ruleta y mostrar imagen final
+      if (N === 0) {
+        wheelContainer.style.display = "none";
+        finalImage.style.display = "block";
+        namesList.innerHTML = "<span>Participantes restantes:</span> —";
+        statusText.innerHTML = "🎉 ¡Todos han abierto su regalo, Feliz Navidad!";
+        spinBtn.disabled = true;
+        return;
+      }
+
+      // Asegurarnos de que la ruleta esté visible y la imagen final oculta
+      wheelContainer.style.display = "block";
+      finalImage.style.display = "none";
+
+      // Reiniciar contenido del wheel (puntero, centro, flecha)
+      wheel.innerHTML = `
+        <div class="fixed-arrow"></div>
+        <div class="center-dot"></div>
+        <div id="pointer"></div>
+      `;
+      pointer = document.getElementById("pointer");
+
+      // Mostrar lista de participantes restantes
+      namesList.innerHTML = "<span>Familiares restantes:</span> " + remaining.join(" • ");
+
+      // Crear fondo de colores con conic-gradient
+      const colors = ["#ff5252", "#4dd0e1", "#ffd54f", "#81c784", "#ce93d8", "#ffb74d"];
+      let gradientParts = [];
+      for (let i = 0; i < N; i++) {
+        const start = (i * 360) / N;
+        const end = ((i + 1) * 360) / N;
+        gradientParts.push(`${colors[i % colors.length]} ${start}deg ${end}deg`);
+      }
+      wheel.style.background = `conic-gradient(${gradientParts.join(",")})`;
+
+      // Crear etiquetas de nombres alrededor de la ruleta
+      for (let i = 0; i < N; i++) {
+        const label = document.createElement("div");
+        label.className = "segment-label";
+        label.textContent = remaining[i];
+
+        const angleDeg = ((i + 0.5) * 360) / N;
+        const rad = (angleDeg - 90) * Math.PI / 180;
+
+        const r = 0.35;
+        const x = 50 + r * 50 * Math.cos(rad);
+        const y = 50 + r * 50 * Math.sin(rad);
+
+        label.style.left = x + "%";
+        label.style.top = y + "%";
+
+        wheel.appendChild(label);
+      }
+
+      // Posicionamos el puntero en alguien aleatorio al inicio
+      setPointerTo(Math.floor(Math.random() * N));
+    }
+
+    // Posicionar la bolita (pointer) en el segmento dado
+    function setPointerTo(index) {
+      const N = remaining.length;
+      if (N === 0) return;
+
+      const angleDeg = ((index + 0.5) * 360) / N;
+      const rad = (angleDeg - 90) * Math.PI / 180;
+      const r = 0.47;
+      const x = 50 + r * 50 * Math.cos(rad);
+      const y = 50 + r * 50 * Math.sin(rad);
+
+      pointer.style.left = x + "%";
+      pointer.style.top = y + "%";
+    }
+
+    // Dibujamos la ruleta por primera vez
+    renderWheel();
+
+    let spinning = false;
+    let sequence = [];
+    let stepIndex = 0;
+
+    function startSpin() {
+      if (spinning) return;
+      if (remaining.length === 0) return;
+
+      spinning = true;
+      spinBtn.disabled = true;
+      statusText.textContent = "¡Girando la ruleta... 🎡!";
+      statusText.style.color = "#ffffff";
+
+      const N = remaining.length;
+      const totalSteps = 28 + Math.floor(Math.random() * 8); // 28–35 pasos
+      const winner = Math.floor(Math.random() * N);
+
+      sequence = [];
+      let current = Math.floor(Math.random() * N);
+
+      for (let i = 0; i < totalSteps - 1; i++) {
+        current = (current + 1) % N;
+        sequence.push(current);
+      }
+      sequence.push(winner);
+
+      stepIndex = 0;
+      animateStep();
+    }
+
+    function animateStep() {
+      const N = remaining.length;
+
+      if (stepIndex >= sequence.length || N === 0) {
+        if (N > 0) {
+          const winnerIndex = sequence[sequence.length - 1];
+          const winnerName = remaining[winnerIndex];
+
+          statusText.innerHTML = `<b>${winnerName}</b> es quien sigue! 🎁`;
+          statusText.style.color = "#81c784";
+
+          alert(`🎄 ${winnerName} es quien sigue! 🎁`);
+
+          // Eliminar al ganador de los participantes restantes
+          remaining.splice(winnerIndex, 1);
+          renderWheel();
+        }
+
+        spinning = false;
+        spinBtn.disabled = remaining.length === 0;
+        return;
+      }
+
+      const idx = sequence[stepIndex];
+      setPointerTo(idx);
+
+      const delay = 60 + stepIndex * 20;
+
+      stepIndex++;
+      setTimeout(animateStep, delay);
+    }
+
+    spinBtn.addEventListener("click", startSpin);
+
+    spotifyBtn.addEventListener("click", () => {
+      if (spotifyUrl) {
+        window.open(spotifyUrl, "_blank");
+      } else {
+        alert("No se configuró ninguna URL de playlist.");
+      }
+    });
+
+    // ================== NIEVE ANIMADA ==================
+
+    const snowCanvas = document.getElementById("snowCanvas");
+    const ctx = snowCanvas.getContext("2d");
+
+    function resizeCanvas() {
+      snowCanvas.width = window.innerWidth;
+      snowCanvas.height = window.innerHeight;
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    const flakes = [];
+    const maxFlakes = 120;
+
+    function createFlake() {
+      return {
+        x: Math.random() * snowCanvas.width,
+        y: Math.random() * snowCanvas.height,
+        r: 1.5 + Math.random() * 3.5,
+        speedY: 0.5 + Math.random() * 1.5,
+        speedX: -0.5 + Math.random() * 1,
+        opacity: 0.4 + Math.random() * 0.6
+      };
+    }
+
+    for (let i = 0; i < maxFlakes; i++) {
+      flakes.push(createFlake());
+    }
+
+    function drawSnow() {
+      ctx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
+      ctx.fillStyle = "#ffffff";
+
+      for (const flake of flakes) {
+        ctx.globalAlpha = flake.opacity;
+        ctx.beginPath();
+        ctx.arc(flake.x, flake.y, flake.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        flake.y += flake.speedY;
+        flake.x += flake.speedX;
+
+        if (flake.y > snowCanvas.height + 5) {
+          flake.y = -5;
+          flake.x = Math.random() * snowCanvas.width;
+        }
+        if (flake.x < -5) flake.x = snowCanvas.width + 5;
+        if (flake.x > snowCanvas.width + 5) flake.x = -5;
+      }
+
+      requestAnimationFrame(drawSnow);
+    }
+
+    drawSnow();
+  </script>
+</body>
+</html>
